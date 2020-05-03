@@ -1,0 +1,7 @@
+pandas
+xgboost
+numpy
+flake8
+black
+pylint
+
