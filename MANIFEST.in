@@ -1,0 +1,2 @@
+include versioneer.py
+include feets/_version.py
