@@ -1,9 +1,26 @@
+"""
+xgboost feature importance by comparing randomly generated features
+importance over K Folds to those of actual data.
+"""
+
 import xgboost as xgb
 import numpy as np
 from sklearn import model_selection
 
 
 def add_random_feats(df, num_new_feats=10):
+    """
+    Add random features to dataframe
+
+    Parameters
+    ----------
+    df : dataframe
+    num_new_feats : int
+
+    Returns
+    -------
+    dataframe, list
+    """
     new_cols = ["random_feat_{}".format(i) for i in range(num_new_feats)]
     for col in new_cols:
         df[col] = np.random.sample(df.index.size)
@@ -11,6 +28,30 @@ def add_random_feats(df, num_new_feats=10):
 
 
 def kfold_split_train(df, target, feats, model_class, **kwargs):
+    """
+
+    Parameters
+    ----------
+    df : dataframe
+    target : str
+        target variable
+    feats : list
+        list of features
+    model_class : class
+        class of model having both .fit and .predict methods
+
+    Other Parameters
+    ----------------
+    kfold_kwargs : dict
+        kwargs for skleanr.model_selection.KFold
+    model_kwargs : dict
+        kwargs for model class.  for xgboost, this will be your hyper parameters.
+
+    Returns
+    -------
+    list
+        list of trained model objects
+    """
     assert model_class in [xgb.XGBClassifier, xgb.XGBRegressor]
     kfold_kwargs = kwargs.get("kfold_kwargs")
     if not kfold_kwargs:
@@ -48,6 +89,31 @@ def flag_important(
     num_random_cols_to_beat=9,
     min_num_folds=4,
 ):
+    """
+    Get important parameters
+
+    Parameters
+    ----------
+    model_objects : list
+        list of model objects
+    feats : list
+        list of features
+    random_cols : list
+        list of random column names generated in add_random_feats
+    importance_type : str ("gain")
+        importance type recognized by xgboost get_score
+    num_random_cols_to_beat : int (9)
+        number of random column any give column must beat in importance
+    min_num_folds : int (4)
+        min number of folds that a surviving feature must appear in to be
+        considered important
+
+    Returns
+    -------
+    list
+        list of important features
+
+    """
     feat_dict = {}
     assert min_num_folds <= len(
         model_objects
