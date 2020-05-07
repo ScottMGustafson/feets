@@ -86,7 +86,8 @@ def classify_value_counts(df, col, unique_thresh=0.05, type_dct=None):
     elif val_counts.size == 2:
         return "binary"
     else:
-        type_dct = classify_feature_types(df[[col]]) if not type_dct else TYPE_MAPPING
+        if not type_dct:
+            type_dct = classify_feature_types(df[[col]])
         _validate_mappings(list(type_dct.values()))
         if type_dct[col] == "numeric":
             assert unique_thresh > 0
