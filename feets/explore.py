@@ -34,7 +34,7 @@ def classify_feature_types(df, feats=None):
         try:
             _ = ser.astype(_type)
             return True
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
     if not feats:
