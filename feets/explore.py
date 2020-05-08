@@ -98,6 +98,15 @@ def classify_value_counts(df, col, unique_thresh=0.05, type_dct=None):
     return "categorical"
 
 
+def process_feats(df, unique_thresh=0.01, feats=None):
+    feat_type_dct = classify_feature_types(df, feats=feats)
+    feat_class_dct = {
+        k: classify_value_counts(df, k, unique_thresh=unique_thresh, type_dct=feat_type_dct)
+        for k in df.columns
+    }
+    return feat_type_dct, feat_class_dct
+
+
 def get_correlates(df, thresh=0.9, feats=None, **corr_kwargs):
     """
     get correlate pairs with a correlation coeff greater that ``thresh``
@@ -128,3 +137,9 @@ def get_correlates(df, thresh=0.9, feats=None, **corr_kwargs):
         .sort_values(ascending=False)
     )
     return corr_pairs[corr_pairs > thresh]
+
+
+def get_high_corr_cols(df, rho_thresh, method="spearman"):
+    corr_matrix = df.corr(method=method).abs()
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+    return [column for column in upper.columns if any(upper[column] > rho_thresh)]
