@@ -131,6 +131,30 @@ def flag_important(
 
 
 def run_gbm_random_feats(df, features, target, model_class, **kwargs):
+    """
+
+    Parameters
+    ----------
+    df
+    features
+    target
+    model_class
+
+    Other Parameters
+    ----------------
+    num_new_feats : int
+    importance_type : str
+    num_random_cols_to_beat : int
+    min_num_folds : int
+    kfold_kwargs : dict
+        kwargs for sklearn.model_selection.KFold
+    model_kwargs : dict
+        kwargs for model class.  for xgboost, this will be your hyperparameters.
+
+    Returns
+    -------
+
+    """
     df, random_cols = add_random_feats(df, num_new_feats=kwargs.get("num_new_feats", 10))
     model_objects = kfold_split_train(df, target, features + random_cols, model_class, **kwargs)
     import_feats = flag_important(
