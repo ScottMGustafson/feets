@@ -5,3 +5,5 @@ flake8
 black
 pylint
 pytest
+eli5
+scikit-learn
