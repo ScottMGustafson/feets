@@ -346,7 +346,7 @@ def get_config_from_root(root):
     parser = configparser.SafeConfigParser()
     with open(setup_cfg, "r") as f:
         parser.readfp(f)
-    VCS = parser.get("versioneer", "VCS")  # mandatory
+    VCS = parser.get("versioneer", "VCS")  # mandatory_feats
 
     def get(parser, name):
         if parser.has_option("versioneer", name):
