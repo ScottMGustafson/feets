@@ -77,7 +77,15 @@ def _flag_important(import_dct, feats, random_cols, num_random_cols_to_beat=9):
         + f" greater than number of random cols {len(random_cols)}"
     )
     random_importance = sorted([x for k, x in import_dct.items() if k in random_cols])
-    random_thresh = random_importance[num_random_cols_to_beat - 1]
+
+    if len(random_importance) == 0:
+        # case where get_scores returns none of the random cols
+        return {k: v for k, v in import_dct.items() if k in feats}
+    diff = len(random_cols) - len(
+        random_importance
+    )  # case where get_score drops a few, but not all
+    ix = max(num_random_cols_to_beat - 1 - diff, 0)
+    random_thresh = random_importance[ix]
     return {k: v for k, v in import_dct.items() if k in feats and v > random_thresh}
 
 
