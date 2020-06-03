@@ -130,7 +130,7 @@ def get_correlates(df, thresh=0.9, feats=None, **corr_kwargs):
         # remove object and datetime types (not comprehensive).
         feats = [f for f in df.columns.tolist() if df[f].dtype not in ["object", "<M8[ns]"]]
 
-    corr_matrix = df.corr(**corr_kwargs).abs()
+    corr_matrix = df[feats].corr(**corr_kwargs).abs()
     corr_pairs = (
         corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
         .stack()

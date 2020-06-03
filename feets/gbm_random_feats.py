@@ -138,7 +138,26 @@ def flag_important(
     return [k for k, v in feat_count.items() if v > min_num_folds]
 
 
-def run_gbm_random_feats(df, features, target, model_class, **kwargs):
+def get_mean_dct(dct_lst):
+    dct = {}
+    for _dct in dct_lst:
+        for k, v in _dct.items():
+            try:
+                dct[k].append(v)
+            except KeyError:
+                dct[k] = [v]
+    return {k: np.mean(v) for k, v in dct.items()}
+
+
+def get_mean_importance_dct(model_objects, importance_type="gain"):
+    dct_lst = [
+        mod.get_booster().get_score(importance_type=importance_type) for mod in model_objects
+    ]
+    mean_dct = get_mean_dct(dct_lst)
+    return mean_dct
+
+
+def run_gbm_random_feats(df, features, target, model_class, return_importance_dct=False, **kwargs):
     """
 
     Parameters
@@ -147,6 +166,8 @@ def run_gbm_random_feats(df, features, target, model_class, **kwargs):
     features
     target
     model_class
+    return_importance_dct : bool
+        if true, return an importance dict instead of list
 
     Other Parameters
     ----------------
@@ -161,16 +182,19 @@ def run_gbm_random_feats(df, features, target, model_class, **kwargs):
 
     Returns
     -------
-
+    dict
     """
     df, random_cols = add_random_feats(df, num_new_feats=kwargs.get("num_new_feats", 10))
     model_objects = kfold_split_train(df, target, features + random_cols, model_class, **kwargs)
+    importance_type = kwargs.get("importance_type", "gain")
     import_feats = flag_important(
         model_objects,
         features,
         random_cols,
-        importance_type=kwargs.get("importance_type", "gain"),
+        importance_type=importance_type,
         num_random_cols_to_beat=kwargs.get("num_random_cols_to_beat", 9),
         min_num_folds=kwargs.get("min_num_folds", 4),
     )
-    return import_feats
+    dct = get_mean_importance_dct(model_objects, importance_type=importance_type)
+    dct = {k: v for k, v in dct.items() if k in import_feats}
+    return dct
