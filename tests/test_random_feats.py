@@ -1,6 +1,7 @@
-from feets.random_feats import _flag_important
-from feets import random_feats
 from unittest import mock
+
+from feets import random_feats
+from feets.random_feats import _flag_important
 
 
 @mock.patch(
