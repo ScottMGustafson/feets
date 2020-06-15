@@ -1,9 +1,8 @@
 """
-xgboost feature importance by comparing randomly generated features
+feature importance by comparing randomly generated features
 importance over K Folds to those of actual data.
 """
 
-import xgboost as xgb
 import numpy as np
 from sklearn import model_selection
 
@@ -45,14 +44,13 @@ def kfold_split_train(df, target, feats, model_class, **kwargs):
     kfold_kwargs : dict
         kwargs for skleanr.model_selection.KFold
     model_kwargs : dict
-        kwargs for model class.  for xgboost, this will be your hyper parameters.
+        kwargs for model class.
 
     Returns
     -------
     list
         list of trained model objects
     """
-    assert model_class in [xgb.XGBClassifier, xgb.XGBRegressor]
     kfold_kwargs = kwargs.get("kfold_kwargs")
     if not kfold_kwargs:
         kfold_kwargs = dict(n_splits=5, shuffle=False, random_state=0)
@@ -81,9 +79,8 @@ def _flag_important(import_dct, feats, random_cols, num_random_cols_to_beat=9):
     if len(random_importance) == 0:
         # case where get_scores returns none of the random cols
         return {k: v for k, v in import_dct.items() if k in feats}
-    diff = len(random_cols) - len(
-        random_importance
-    )  # case where get_score drops a few, but not all
+    # case where get_score drops a few, but not all
+    diff = len(random_cols) - len(random_importance)
     ix = max(num_random_cols_to_beat - 1 - diff, 0)
     random_thresh = random_importance[ix]
     return {k: v for k, v in import_dct.items() if k in feats and v > random_thresh}
@@ -109,7 +106,7 @@ def flag_important(
     random_cols : list
         list of random column names generated in add_random_feats
     importance_type : str ("gain")
-        importance type recognized by xgboost get_score
+        importance type recognized by xgboost get_score.  if not xgboost, this is ignored
     num_random_cols_to_beat : int (9)
         number of random column any give column must beat in importance
     min_num_folds : int (4)
@@ -128,7 +125,7 @@ def flag_important(
     ), "min_num_folds cannot be less than the number of folds."
     feat_count = {x: 0 for x in feats}
     for i, mod in enumerate(model_objects):
-        import_dct = mod.get_booster().get_score(importance_type=importance_type)
+        import_dct = get_import_dct(mod, feats, importance_type=importance_type)
         feat_dict[i] = _flag_important(
             import_dct, feats, random_cols, num_random_cols_to_beat=num_random_cols_to_beat
         )
@@ -149,15 +146,19 @@ def get_mean_dct(dct_lst):
     return {k: np.mean(v) for k, v in dct.items()}
 
 
-def get_mean_importance_dct(model_objects, importance_type="gain"):
-    dct_lst = [
-        mod.get_booster().get_score(importance_type=importance_type) for mod in model_objects
-    ]
+def get_import_dct(mod, feats, importance_type="gain"):
+    if hasattr(mod, "get_booster"):
+        return mod.get_booster().get_score(importance_type=importance_type)
+    return dict(zip(list(feats), list(mod.feature_importances_)))
+
+
+def get_mean_importance_dct(model_objects, feats, importance_type="gain"):
+    dct_lst = [get_import_dct(mod, feats, importance_type=importance_type) for mod in model_objects]
     mean_dct = get_mean_dct(dct_lst)
     return mean_dct
 
 
-def run_gbm_random_feats(df, features, target, model_class, return_importance_dct=False, **kwargs):
+def run_random_feats(df, features, target, model_class, **kwargs):
     """
 
     Parameters
@@ -166,8 +167,6 @@ def run_gbm_random_feats(df, features, target, model_class, return_importance_dc
     features
     target
     model_class
-    return_importance_dct : bool
-        if true, return an importance dict instead of list
 
     Other Parameters
     ----------------
@@ -178,7 +177,7 @@ def run_gbm_random_feats(df, features, target, model_class, return_importance_dc
     kfold_kwargs : dict
         kwargs for sklearn.model_selection.KFold
     model_kwargs : dict
-        kwargs for model class.  for xgboost, this will be your hyperparameters.
+        kwargs for model class.
 
     Returns
     -------
@@ -195,6 +194,6 @@ def run_gbm_random_feats(df, features, target, model_class, return_importance_dc
         num_random_cols_to_beat=kwargs.get("num_random_cols_to_beat", 9),
         min_num_folds=kwargs.get("min_num_folds", 4),
     )
-    dct = get_mean_importance_dct(model_objects, importance_type=importance_type)
+    dct = get_mean_importance_dct(model_objects, features, importance_type=importance_type)
     dct = {k: v for k, v in dct.items() if k in import_feats}
     return dct
