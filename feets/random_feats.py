@@ -184,6 +184,7 @@ def run_random_feats(df, features, target, model_class, **kwargs):
     dict
     """
     df, random_cols = add_random_feats(df, num_new_feats=kwargs.get("num_new_feats", 10))
+    df = df.dropna(subset=[target])
     model_objects = kfold_split_train(df, target, features + random_cols, model_class, **kwargs)
     importance_type = kwargs.get("importance_type", "gain")
     import_feats = flag_important(
