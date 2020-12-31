@@ -1,6 +1,8 @@
-from feets.random_feats import _flag_important, add_random_feats
-import pandas as pd
 import dask.dataframe as dd
+import pandas as pd
+
+from feets.random_feats import _flag_important, add_random_feats
+
 
 def make_fake_importance_dct():
     dct = {k: i for i, k in enumerate("abcdefghijklmnop")}
@@ -35,11 +37,13 @@ def test_flag_important_drop_some():
     expected = {"l": 11, "m": 12, "j": 9, "k": 10, "n": 13, "o": 14, "p": 15}
     assert results == expected
 
+
 def test_add_random():
     df = pd.DataFrame(dict(a=list(range(1000))))
     df, new_cols = add_random_feats(df, num_new_feats=30)
     for col in new_cols:
         assert col in df.columns
+
 
 def test_add_random_dd():
     df = dd.from_pandas(pd.DataFrame(dict(a=list(range(1000)))), npartitions=2)
