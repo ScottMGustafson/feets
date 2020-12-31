@@ -25,8 +25,13 @@ def add_random_feats(df, num_new_feats=10):
     dataframe, list
     """
     new_cols = ["random_feat_{}".format(i) for i in range(num_new_feats)]
-    for col in new_cols:
-        df[col] = da.random.random(df.index.size)
+    if isinstance(df, dd.DataFrame):
+        sz = df.index.size.compute()
+        for col in new_cols:
+            df[col] = dd.from_dask_array(da.random.random(sz))
+    else:
+        for col in new_cols:
+            df[col] = np.random.random(df.index.size)
     return df, new_cols
 
 
