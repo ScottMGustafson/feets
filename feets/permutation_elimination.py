@@ -18,6 +18,7 @@ class PermutationFeatElim:
         self.drop = kwargs.get("drop", False)
         self.train_sample = kwargs.get("train_sample", 0.7)
         self.remaining_feats = None
+        raise NotImplemented("Not yet implemented.")
 
     def fit(self, X, y=None):
         return self
