@@ -7,7 +7,11 @@ from eli5.sklearn import PermutationImportance
 
 class PermutationFeatElim:
     def __init__(
-        self, target_var, xgb_params, model_class, **kwargs,
+        self,
+        target_var,
+        xgb_params,
+        model_class,
+        **kwargs,
     ):
         self.target_var = target_var
         self.xgb_params = xgb_params
@@ -18,7 +22,7 @@ class PermutationFeatElim:
         self.drop = kwargs.get("drop", False)
         self.train_sample = kwargs.get("train_sample", 0.7)
         self.remaining_feats = None
-        raise NotImplemented("Not yet implemented.")
+        raise NotImplementedError("Not yet implemented.")
 
     def fit(self, X, y=None):
         return self

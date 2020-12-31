@@ -1,36 +1,4 @@
-from unittest import mock
-
-from feets import random_feats
 from feets.random_feats import _flag_important
-
-
-@mock.patch(
-    "feets.random_feats.add_random_feats",
-    return_value=("fake_df", ["random1", "random2", "random3"]),
-)
-@mock.patch("feets.random_feats.kfold_split_train", return_value=["fake", "model", "objects"])
-@mock.patch("feets.random_feats.flag_important", return_value=["a", "b", "c"])
-@mock.patch(
-    "feets.random_feats.get_mean_importance_dct", return_value={"a": 1, "b": 2, "c": 3, "d": 4}
-)
-def test_run_gbm_feats(mock_imp_dct, mock_import_list, mock_models, mock_random_feat_output):
-    output_dct = random_feats.run_random_feats(
-        "fake_df", ["a", "b", "c", "d"], "target", "model_class"
-    )
-    mock_random_feat_output.assert_called_with("fake_df", num_new_feats=10)
-    mock_models.assert_called_with(
-        "fake_df", "target", ["a", "b", "c", "d"] + ["random1", "random2", "random3"], "model_class"
-    )
-    mock_import_list.assert_called_with(
-        ["fake", "model", "objects"],
-        ["a", "b", "c", "d"],
-        ["random1", "random2", "random3"],
-        importance_type="gain",
-        num_random_cols_to_beat=9,
-        min_num_folds=4,
-    )
-    mock_imp_dct.assert_called_with(["fake", "model", "objects"], importance_type="gain")
-    assert output_dct == {"a": 1, "b": 2, "c": 3}
 
 
 def make_fake_importance_dct():

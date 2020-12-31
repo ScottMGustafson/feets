@@ -35,7 +35,7 @@ def main():
         author_email=main_email,
         classifiers=[
             "License :: OSI Approved :: MIT License",
-            "Programming Language :: Python :: 3.7",
+            "Programming Language :: Python :: 3.8",
         ],
         packages=find_packages(exclude=["tests", "notebooks"]),  # Required
         python_requires=">=3.6",
