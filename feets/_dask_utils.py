@@ -3,7 +3,7 @@
 import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
-import xgboost.dask as dxgb
+import xgboost as xgb
 
 
 def _add_simple_index(ddf, ix_name="ix", temp_name="_ones"):
@@ -50,7 +50,7 @@ def _to_dask_dataframe(X, npartitions=1):
     return ddf.persist()
 
 
-class DaskXGBoostClassifier(dxgb.DaskXGBClassifier):
+class DaskXGBoostClassifier(xgb.dask.DaskXGBClassifier):
     def __init__(self, *args, **kwargs):
         super(DaskXGBoostClassifier, self).__init__(*args, **kwargs)
 
@@ -68,7 +68,7 @@ class DaskXGBoostClassifier(dxgb.DaskXGBClassifier):
         return super(DaskXGBoostClassifier, self).predict_proba(X, **kwargs)
 
 
-class DaskXGBoostRegressor(dxgb.DaskXGBRegressor):
+class DaskXGBoostRegressor(xgb.dask.DaskXGBRegressor):
     def __init__(self, *args, **kwargs):
         super(DaskXGBoostRegressor, self).__init__(*args, **kwargs)
 

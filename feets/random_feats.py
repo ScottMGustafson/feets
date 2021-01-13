@@ -28,7 +28,7 @@ def add_random_feats(df, num_new_feats=10):
     if isinstance(df, dd.DataFrame):
         sz = df.index.size.compute()
         for col in new_cols:
-            df[col] = dd.from_dask_array(da.random.random(sz))
+            df[col] = dd.from_dask_array(da.random.random(sz), index=df.index)
     else:
         for col in new_cols:
             df[col] = np.random.random(df.index.size)
