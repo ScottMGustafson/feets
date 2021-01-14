@@ -1,8 +1,8 @@
+import dask_ml
 import numpy as np
 import pandas as pd
+import sklearn
 from dask import dataframe as dd
-from dask_ml.datasets import make_regression
-from sklearn.datasets import make_regression
 
 
 def make_date_data(num_periods=10, num_feats=5, npartitions=2, to_dask=False, **regression_kwargs):
@@ -13,7 +13,9 @@ def make_date_data(num_periods=10, num_feats=5, npartitions=2, to_dask=False, **
     )
     df["day_of_week"] = df["date"].dt.day_of_week
 
-    X, y = make_regression(n_samples=num_periods, n_features=num_feats, **regression_kwargs)
+    X, y = sklearn.datasets.make_regression(
+        n_samples=num_periods, n_features=num_feats, **regression_kwargs
+    )
     df = pd.concat([df, pd.DataFrame(X), pd.DataFrame({"target": y})], ignore_index=True, axis=1)
     df.columns = ["date", "day_of_week", "cumsum"] + [i for i in range(X.shape[1])] + ["target"]
     df.set_index("date")
@@ -23,7 +25,7 @@ def make_date_data(num_periods=10, num_feats=5, npartitions=2, to_dask=False, **
 
 
 def make_fake_regression(ncols=10, nrows=100):
-    ddf = make_regression(
+    ddf = dask_ml.datasets.make_regression(
         n_samples=nrows,
         n_features=ncols,
         n_informative=10,

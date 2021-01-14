@@ -1,7 +1,7 @@
-import dask.dataframe as dd
 import pandas as pd
-from tests import make_data
+
 from feets.random_feats import _flag_important, add_random_feats
+from tests import make_data
 
 
 def make_fake_importance_dct():
