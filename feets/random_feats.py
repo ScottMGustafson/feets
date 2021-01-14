@@ -209,7 +209,17 @@ def get_mean_importance_dct(model_objects, feats, importance_type="gain"):
     return mean_dct
 
 
-def run_random_feats(df, features, target, model_class, **kwargs):
+def run_random_feats(
+    df,
+    features,
+    target,
+    model_class,
+    num_new_feats=10,
+    num_random_cols_to_beat=9,
+    min_num_folds=4,
+    importance_type="gain",
+    **kwargs,
+):
     """
 
     Parameters
@@ -218,39 +228,43 @@ def run_random_feats(df, features, target, model_class, **kwargs):
     features
     target
     model_class
+    num_new_feats : int, default=10
+    num_random_cols_to_beat : int, default=9
+    min_num_folds : int, default=4
+    importance_type : str, default="gain"
+
 
     Other Parameters
     ----------------
-    num_new_feats : int
-    importance_type : str
-    num_random_cols_to_beat : int
-    min_num_folds : int
     kfold_kwargs : dict
         kwargs for sklearn.model_selection.KFold
     model_kwargs : dict
         kwargs for model class.
+    npartitions : int, default=2
+        number of dask partitions if converting from pandas
 
     Returns
     -------
     dict
     """
     if isinstance(df, pd.DataFrame):
-        ddf = _to_dask_dataframe(df, npartitions=kwargs.get("npartitions", 2))
+        ddf = _to_dask_dataframe(df, npartitions=kwargs.get("npartitions", 2)).repartition(
+            partition_size="100MB"
+        )
     else:
         ddf = df
         assert isinstance(ddf, dd.DataFrame), f"{type(ddf)} not supported."
 
-    ddf, random_cols = add_random_feats(ddf, num_new_feats=kwargs.get("num_new_feats", 10))
+    ddf, random_cols = add_random_feats(ddf, num_new_feats=num_new_feats)
     ddf = ddf.dropna(subset=[target])
     model_objects = kfold_split_train_cv(ddf, target, features + random_cols, model_class, **kwargs)
-    importance_type = kwargs.get("importance_type", "gain")
     import_feats = flag_important(
         model_objects,
         features,
         random_cols,
         importance_type=importance_type,
-        num_random_cols_to_beat=kwargs.get("num_random_cols_to_beat", 9),
-        min_num_folds=kwargs.get("min_num_folds", 4),
+        num_random_cols_to_beat=num_random_cols_to_beat,
+        min_num_folds=min_num_folds,
     )
     dct = get_mean_importance_dct(model_objects, features, importance_type=importance_type)
     dct = {k: v for k, v in dct.items() if k in import_feats}
