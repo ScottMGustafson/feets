@@ -7,7 +7,11 @@ from eli5.sklearn import PermutationImportance
 
 class PermutationFeatElim:
     def __init__(
-        self, target_var, xgb_params, model_class, **kwargs,
+        self,
+        target_var,
+        xgb_params,
+        model_class,
+        **kwargs,
     ):
         self.target_var = target_var
         self.xgb_params = xgb_params

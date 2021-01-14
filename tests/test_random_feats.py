@@ -1,6 +1,6 @@
 import dask.dataframe as dd
 import pandas as pd
-
+from tests import make_data
 from feets.random_feats import _flag_important, add_random_feats
 
 
@@ -46,7 +46,7 @@ def test_add_random():
 
 
 def test_add_random_dd():
-    df = dd.from_pandas(pd.DataFrame(dict(a=list(range(1000)))), npartitions=2)
+    df = make_data.make_fake_data(to_pandas=False)
     df, new_cols = add_random_feats(df, num_new_feats=30)
     df = df.compute()
     for col in new_cols:
