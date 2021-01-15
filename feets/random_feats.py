@@ -1,10 +1,15 @@
 """
-feature importance by comparing randomly generated features
-importance over K Folds to those of actual data.
+Feature importance by comparing randomly generated features importance over K Folds to those of actual data.
 """
 
+import dask.array as da
+import dask.dataframe as dd
+import dask_ml
 import numpy as np
-from sklearn import model_selection
+import pandas as pd
+import sklearn
+
+from feets._dask_utils import _to_dask_dataframe
 
 
 def add_random_feats(df, num_new_feats=10):
@@ -21,23 +26,66 @@ def add_random_feats(df, num_new_feats=10):
     dataframe, list
     """
     new_cols = ["random_feat_{}".format(i) for i in range(num_new_feats)]
-    for col in new_cols:
-        df[col] = np.random.sample(df.index.size)
+    if isinstance(df, dd.DataFrame):
+        sz = df.index.size.compute()
+        arr = da.random.random((sz, len(new_cols)))
+        new_df = dd.from_dask_array(arr, columns=new_cols)
+        df = df.merge(new_df, how="left", left_index=True, right_index=True)
+    else:
+        for col in new_cols:
+            df[col] = np.random.random(df.index.size)
     return df, new_cols
 
 
-def kfold_split_train(df, target, feats, model_class, **kwargs):
+def _dask_kfold(df, feats, target, model_class, kfold_kwargs, model_kwargs, fit_params):
+    ddf = _to_dask_dataframe(df).dropna(subset=[target])
+    X = ddf[feats].to_dask_array(lengths=True)
+    y = ddf[target].to_dask_array(lengths=True)
+
+    kf = dask_ml.model_selection.KFold(**kfold_kwargs)
+    model_objects = []
+
+    for train_ix, test_ix in kf.split(X, y):
+        mod = model_class(**model_kwargs)
+        X_train, y_train = X[train_ix], y[train_ix]
+        mod.fit(X_train, y_train, **fit_params)
+        mod.feature_names = feats
+        mod.get_booster().feature_names = feats
+        model_objects.append(mod)
+    return model_objects
+
+
+def _pandas_kfold(df, feats, target, model_class, kfold_kwargs, model_kwargs, fit_params):
+    X = df[feats]
+    y = df[target]
+
+    kf = sklearn.model_selection.KFold(**kfold_kwargs)
+    model_objects = []
+
+    for train_index, test_index in kf.split(X.values):
+        X_train, y_train = X.iloc[train_index], y[train_index]
+        mod = model_class(**model_kwargs)
+        mod.fit(X_train, y_train, **fit_params)
+        model_objects.append(mod)
+    return model_objects
+
+
+def kfold_split_train_cv(df, target, feats, model_class, is_dask=True, **kwargs):
     """
 
     Parameters
     ----------
     df : dataframe
+        dask or pandas dataframe
     target : str
         target variable
     feats : list
         list of features
     model_class : class
         class of model having both .fit and .predict methods
+    is_dask : bool, default=True
+        if true, will convert any dataframes to dask and run with dask_ml.model_selection.KFold
+        rather than the sklearn equivalent
 
     Other Parameters
     ----------------
@@ -45,6 +93,8 @@ def kfold_split_train(df, target, feats, model_class, **kwargs):
         kwargs for skleanr.model_selection.KFold
     model_kwargs : dict
         kwargs for model class.
+    fit_params : dict
+        params for fit
 
     Returns
     -------
@@ -53,19 +103,19 @@ def kfold_split_train(df, target, feats, model_class, **kwargs):
     """
     kfold_kwargs = kwargs.get("kfold_kwargs")
     if not kfold_kwargs:
-        kfold_kwargs = dict(n_splits=5, shuffle=False, random_state=0)
+        kfold_kwargs = dict(n_splits=5, shuffle=True, random_state=0)
     model_kwargs = kwargs.get("model_kwargs", {})
+    fit_params = kwargs.get("fit_params", {})
 
-    X = df[feats]
-    y = df[target]
+    if is_dask:
+        model_objects = _dask_kfold(
+            df, feats, target, model_class, kfold_kwargs, model_kwargs, fit_params
+        )
+    else:
+        model_objects = _pandas_kfold(
+            df, feats, target, model_class, kfold_kwargs, model_kwargs, fit_params
+        )
 
-    kf = model_selection.KFold(**kfold_kwargs)
-    model_objects = []
-    for train_index, test_index in kf.split(X.values):
-        X_train, y_train = X.iloc[train_index], y[train_index]
-        mod = model_class(**model_kwargs)
-        mod.fit(X_train, y_train)
-        model_objects.append(mod)
     return model_objects
 
 
@@ -95,7 +145,7 @@ def flag_important(
     min_num_folds=4,
 ):
     """
-    Get important parameters
+    Get important parameters.
 
     Parameters
     ----------
@@ -158,7 +208,17 @@ def get_mean_importance_dct(model_objects, feats, importance_type="gain"):
     return mean_dct
 
 
-def run_random_feats(df, features, target, model_class, **kwargs):
+def run_random_feats(
+    df,
+    features,
+    target,
+    model_class,
+    num_new_feats=10,
+    num_random_cols_to_beat=9,
+    min_num_folds=4,
+    importance_type="gain",
+    **kwargs,
+):
     """
 
     Parameters
@@ -167,34 +227,44 @@ def run_random_feats(df, features, target, model_class, **kwargs):
     features
     target
     model_class
+    num_new_feats : int, default=10
+    num_random_cols_to_beat : int, default=9
+    min_num_folds : int, default=4
+    importance_type : str, default="gain"
+
 
     Other Parameters
     ----------------
-    num_new_feats : int
-    importance_type : str
-    num_random_cols_to_beat : int
-    min_num_folds : int
     kfold_kwargs : dict
         kwargs for sklearn.model_selection.KFold
     model_kwargs : dict
         kwargs for model class.
+    npartitions : int, default=2
+        number of dask partitions if converting from pandas
 
     Returns
     -------
     dict
     """
-    df, random_cols = add_random_feats(df, num_new_feats=kwargs.get("num_new_feats", 10))
-    df = df.dropna(subset=[target])
-    model_objects = kfold_split_train(df, target, features + random_cols, model_class, **kwargs)
-    importance_type = kwargs.get("importance_type", "gain")
+    if isinstance(df, pd.DataFrame):
+        ddf = _to_dask_dataframe(df, npartitions=kwargs.get("npartitions", 2)).repartition(
+            partition_size="100MB"
+        )
+    else:
+        ddf = df
+        assert isinstance(ddf, dd.DataFrame), f"{type(ddf)} not supported."
+
+    ddf, random_cols = add_random_feats(ddf, num_new_feats=num_new_feats)
+    ddf = ddf.dropna(subset=[target])
+    model_objects = kfold_split_train_cv(ddf, target, features + random_cols, model_class, **kwargs)
     import_feats = flag_important(
         model_objects,
         features,
         random_cols,
         importance_type=importance_type,
-        num_random_cols_to_beat=kwargs.get("num_random_cols_to_beat", 9),
-        min_num_folds=kwargs.get("min_num_folds", 4),
+        num_random_cols_to_beat=num_random_cols_to_beat,
+        min_num_folds=min_num_folds,
     )
     dct = get_mean_importance_dct(model_objects, features, importance_type=importance_type)
     dct = {k: v for k, v in dct.items() if k in import_feats}
-    return dct
+    return dct, model_objects
